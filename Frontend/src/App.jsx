@@ -8,6 +8,8 @@ function App() {
   const [loading, setLoading] = useState(false); // Trigger loading ui 
   const [feedback, setFeedback] = useState(null); // Contains feedback from AI API
 
+  const backendURL = "https://artcritique.onrender.com";
+
 
   // File change event
   const onFileChange = (event) => {
@@ -37,7 +39,7 @@ function App() {
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       const response = await axios.post(
-        "http://localhost:5000/analyze", // or /analyze later
+        `${backendURL}/analyze`, // or /analyze later
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
