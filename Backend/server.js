@@ -9,6 +9,8 @@ import {
 } from "@google/genai";
 import fs from "fs";
 
+const PORT = process.env.PORT || 5000; // Use Render's assigned port if available
+
 dotenv.config();
 
 // Acquires the GEMINI_API_KEY env key
@@ -78,6 +80,6 @@ app.post("/analyze", upload.single("image"), async (req, res) => {
 
 });
 
-app.listen(5000, () => {
-    console.log("Server listening on port 5000");
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server listening on port ${PORT}`);
 });
