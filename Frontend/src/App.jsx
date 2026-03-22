@@ -1,5 +1,13 @@
 import { useState } from 'react';
 import axios from "axios";
+import { 
+  SignedIn, 
+  SignedOut, 
+  SignInButton, 
+  SignUpButton, 
+  UserButton, 
+  useAuth 
+} from '@clerk/clerk-react';
 import "./styling/App.css";
 import "./styling/index.css";
 
@@ -10,6 +18,9 @@ function App() {
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
+  // Inside your App function:
+  const { getToken } = useAuth();
+
 
   // File change event
   const onFileChange = (event) => {
@@ -18,42 +29,39 @@ function App() {
 
   // File upload: ASYNC
   const onFileUpload = async () => {
-    if (!selectedFile) {
-        alert("Please select a file first!");
-        return;
-      }
+  if (!selectedFile) {
+    alert("Please select a file first!");
+    return;
+  }
 
-    setLoading(true); // Set loading to true
-    setFeedback(null); // Reset feedback incase this is a second search
+  setLoading(true);
+  setFeedback(null);
+
+  try {
+    // 1. Get the session token from Clerk
+    const token = await getToken();
 
     const formData = new FormData();
-    formData.append(
-      "image",
-      selectedFile,
-      selectedFile.name
+    formData.append("image", selectedFile, selectedFile.name);
+
+    // 2. Pass the token in the Authorization header
+    const response = await axios.post(
+      `${BACKEND_URL}/analyze`,
+      formData,
+      {
+        headers: { 
+          "Content-Type": "multipart/form-data",
+          "Authorization": `Bearer ${token}` // <--- THE KEY ADDITION
+        },
+      }
     );
-    console.log(selectedFile); // debug purposes
-    
-    try {
-      // simulate backend call with delay (fake AI analysis)
-      await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      const response = await axios.post(
-        `${BACKEND_URL}/analyze`, // or /analyze later
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
-      );
-
-      console.log(response.data); // shows { message: "...", file: {...} }
-      setFeedback(response.data.feedbackDetails); // store message in state
-
-    } catch (err) {
-      console.error(err);
-      alert("Error uploading file");
-    } finally {
-      setLoading(false); // stop loading
+    setFeedback(response.data.feedbackDetails);
+  } catch (err) {
+    console.error(err);
+    alert(err.response?.status === 401 ? "Please sign in first!" : "Error uploading file");
+  } finally {
+    setLoading(false);
     }
   };
 
@@ -88,9 +96,9 @@ function App() {
       </>
     );
     } else {
-      const strengths = feedbackDetails.Strengths || []; // array
-      const weaknesses = feedbackDetails.Weaknesses || []; // array
-      const tips = feedbackDetails.Tips || []; // array
+      const strengths = feedbackDetails.strengths || []; // array
+      const weaknesses = feedbackDetails.weaknesses || []; // array
+      const tips = feedbackDetails.tips || []; // array
 
       return (
         <div>
@@ -120,26 +128,59 @@ function App() {
     
   }
 
-  return (
+ return (
     <>
-      <div className="uploadCard">
-        <h1 className="Title">Welcome to the Art AI Feedback Tool, please select an image to upload!</h1>
-        <div className="uploadDiv">
-          <input type="file" id="fileUpload" accept="image/*" onChange={onFileChange} style={{ display: "none" }}/>
-          <label htmlFor="fileUpload" className="customButton">
-            Choose File
-          </label>
-          <button onClick={onFileUpload} disabled={loading}>Upload!</button>
-        </div>
-        <div className="ImagePreview">
-          <FileData className="fileData"/>
-        </div>
-        <div className="Feedback">
-          <Feedback feedbackDetails={feedback}/>
-        </div>
-      </div>
+      <main className="main-content">
+        {/* VIEW 1: Shown ONLY when the user is logged out */}
+        <SignedOut>
+          <div className="welcome-container">
+            <h1>Master Your Art with AI</h1>
+            <p>Get professional-grade critiques on your sketches and paintings instantly.</p>
+            <div className="hero-buttons">
+              <SignInButton mode="modal">
+                <button className="large-button">Sign In to Get Started</button>
+              </SignInButton>
+            </div>
+          </div>
+        </SignedOut>
+
+        {/* VIEW 2: Shown ONLY when the user is logged in */}
+        <SignedIn>
+          <div className="uploadCard">
+            <h1 className="Title">Welcome! Select an image to get started.</h1>
+            
+            <div className="uploadDiv">
+              <input 
+                type="file" 
+                id="fileUpload" 
+                accept="image/*" 
+                onChange={onFileChange} 
+                style={{ display: "none" }}
+              />
+              <label htmlFor="fileUpload" className="customButton">
+                Choose File
+              </label>
+              <button 
+                className="upload-btn" 
+                onClick={onFileUpload} 
+                disabled={loading}
+              >
+                {loading ? "Analyzing..." : "Upload & Analyze"}
+              </button>
+            </div>
+
+            <div className="ImagePreview">
+              <FileData className="fileData"/>
+            </div>
+
+            <div className="Feedback">
+              <Feedback feedbackDetails={feedback}/>
+            </div>
+          </div>
+        </SignedIn>
+      </main>
     </>
-  )
+  );
 }
 
 export default App

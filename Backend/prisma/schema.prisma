@@ -1,0 +1,18 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Critique {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  imageUrl   String
+  rating     Int
+  strengths  String[]
+  weaknesses String[]
+  tips       String[]
+  userId     String
+}
